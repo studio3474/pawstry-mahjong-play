@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Purrista">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#2a170b">
   <title>Purrista Mahjong</title>
@@ -48,6 +50,60 @@
     <div id="bar"><div id="fill"><div id="cup"></div></div></div><div id="pct">%0</div>
   </div></div>
   <script>
+    // ---- errors. iOS Safari reports an error from the game code (which the loader runs from a blob: address) only as
+    // "Script error." with no file or line, and Unity's loader then shows a system alert for it, even when the game
+    // carries on. Such errors are only logged; a real crash (the WebAssembly runtime stopped) gets our own card with a
+    // reload button. Add ?debug to the address to see every error with its details on screen.
+    const debugMode = /[?&]debug\b/.test(location.search);
+    const errorLog = [];
+    let dbg = null;
+    const showDebug = (line) => {
+      if (!debugMode) return;
+      if (!dbg) {
+        dbg = document.createElement("pre");
+        dbg.style.cssText = "position:fixed;left:0;right:0;bottom:0;max-height:45%;overflow:auto;margin:0;padding:8px;z-index:2147483647;"
+          + "background:rgba(0,0,0,.85);color:#9f9;font:11px/1.35 monospace;white-space:pre-wrap;-webkit-user-select:text;user-select:text;";
+        document.body.appendChild(dbg);
+      }
+      dbg.textContent += line + "\n";
+    };
+    window.addEventListener("error", e => {
+      const where = e.filename ? " @ " + e.filename.split("/").pop() + ":" + e.lineno + ":" + e.colno : "";
+      const stack = e.error && e.error.stack ? "\n" + e.error.stack : "";
+      errorLog.push(String(e.message) + where);
+      showDebug("[error] " + e.message + where + stack);
+    }, true);
+    window.addEventListener("unhandledrejection", e => showDebug("[promise] " + (e.reason && (e.reason.stack || e.reason.message) || e.reason)));
+    if (debugMode) {
+      const origErr = console.error.bind(console), origWarn = console.warn.bind(console);
+      console.error = (...a) => { showDebug("[console.error] " + a.join(" ")); origErr(...a); };
+      console.warn = (...a) => { showDebug("[console.warn] " + a.join(" ")); origWarn(...a); };
+      showDebug("[debug] " + navigator.userAgent + (navigator.standalone ? "  (home screen)" : ""));
+    }
+    let crashShown = false;
+    const showCrash = () => {
+      if (crashShown) return;
+      crashShown = true;
+      const tr2 = (navigator.language || "").toLowerCase().startsWith("tr");
+      const card = document.createElement("div");
+      card.style.cssText = "position:fixed;inset:0;top:0;left:0;right:0;bottom:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;background:rgba(20,12,6,.7);";
+      card.innerHTML = '<div style="width:min(86vw,360px);background:#FFF6E8;border-radius:22px;padding:24px 20px;text-align:center;color:#4A2E1A;font:600 17px/1.4 system-ui,-apple-system,sans-serif">'
+        + (tr2 ? "Bir şeyler ters gitti. İlerlemen kayıtlı; oyunu yeniden açalım." : "Something went wrong. Your progress is saved; let's reopen the game.")
+        + '<br><button style="margin-top:16px;border:0;border-radius:14px;padding:12px 26px;background:#3d9b35;color:#fff;font:700 17px system-ui,sans-serif">'
+        + (tr2 ? "Yeniden yükle" : "Reload") + '</button></div>';
+      card.querySelector("button").onclick = () => location.reload();
+      document.body.appendChild(card);
+    };
+    // Unity calls this before its own alert; returning true means "handled"
+    const onUnityError = (message, filename, lineno) => {
+      const text = String(message || "");
+      showDebug("[unity] " + text + (filename ? " @ " + filename + ":" + lineno : ""));
+      const fatal = /abort\(|RuntimeError|unreachable|Out of memory|memory access out of bounds/i.test(text);
+      if (fatal) showCrash();
+      else console.warn("[purrista] ignored non-fatal error:", text);
+      return true;
+    };
+
     const canvas = document.querySelector("#unity-canvas");
     const loading = document.querySelector("#loading");
     const fill = document.querySelector("#fill");
@@ -63,16 +119,19 @@
     const quoteTimer = setInterval(showQuote, 3500);
     const buildUrl = "Build";
     const config = {
-      dataUrl: buildUrl + "/a3cdd82b637a188b798c18bafa76d15e.data.unityweb",
-      frameworkUrl: buildUrl + "/5309979ae9871a8ac93a31cc5fa09da4.framework.js.unityweb",
-      codeUrl: buildUrl + "/09bd12cbef35d16004b6704abf542528.wasm.unityweb",
+      dataUrl: buildUrl + "/6ad4eefdb31452b9584051de50f867bc.data.unityweb",
+      frameworkUrl: buildUrl + "/c4dc08e1eb6c8d24fdd6108b0dae1395.framework.js.unityweb",
+      codeUrl: buildUrl + "/55f4687c12b6b3303d8e1f8edcc53794.wasm.unityweb",
       streamingAssetsUrl: "StreamingAssets",
       companyName: "STudio3474",
       productName: "Purrista Mahjong",
       productVersion: "0.28.2",
       // phones report 3x; 2x keeps iOS Safari inside its memory limits
       devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-      showBanner: (text, type) => { if (type === "error") { msg.dataset.error = "1"; msg.textContent = text; } }
+      showBanner: (text, type) => { if (type === "error") { msg.dataset.error = "1"; msg.textContent = text; } },
+      errorHandler: onUnityError,
+      // saves (PlayerPrefs) reach the browser storage by themselves, the way Unity now recommends
+      autoSyncPersistentDataPath: true
     };
     // no pinch, double-tap zoom or long-press menus on the game (iOS Safari, Android Chrome)
     document.addEventListener("gesturestart", e => e.preventDefault());
@@ -87,7 +146,7 @@
                            : "Your browser does not support WebGL 2. Please try an up-to-date Chrome, Safari 15+ or Edge.";
     }
     const script = document.createElement("script");
-    script.src = buildUrl + "/350c047eaf57e489568f9142c21e3cfa.loader.js";
+    script.src = buildUrl + "/8be4e19e6b5235b1c11a2d2e01b7d73f.loader.js";
     script.onload = () => {
       createUnityInstance(canvas, config, p => { fill.style.width = Math.round(p * 90) + "%"; document.querySelector("#pct").textContent = "%" + Math.round(p * 90); })
         .then((instance) => { window.purristaUnity = instance; clearInterval(quoteTimer); fill.style.width = "100%"; document.querySelector("#pct").textContent = "%100"; setTimeout(() => { loading.style.transition = "opacity .35s"; loading.style.opacity = "0"; setTimeout(() => { loading.style.display = "none"; }, 380); }, 350); })
