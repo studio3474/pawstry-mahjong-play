@@ -119,13 +119,13 @@
     const quoteTimer = setInterval(showQuote, 3500);
     const buildUrl = "Build";
     const config = {
-      dataUrl: buildUrl + "/a236f6a81eb702dad80a411c19f63172.data.unityweb",
-      frameworkUrl: buildUrl + "/ca9ddad180508fc91a8442dc53301604.framework.js.unityweb",
-      codeUrl: buildUrl + "/079121797937a17e098d17a8034db0da.wasm.unityweb",
+      dataUrl: buildUrl + "/ccd622e4fb0c05baef69eb37e11aef53.data.unityweb",
+      frameworkUrl: buildUrl + "/04c37b7a9e6c1568f899dc4b043df58e.framework.js.unityweb",
+      codeUrl: buildUrl + "/222aee37b5758951bb52a701de5a88dd.wasm.unityweb",
       streamingAssetsUrl: "StreamingAssets",
       companyName: "STudio3474",
       productName: "Purrista Mahjong",
-      productVersion: "0.28.2",
+      productVersion: "0.29.0",
       // phones report 3x; 2x keeps iOS Safari inside its memory limits
       devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
       showBanner: (text, type) => { if (type === "error") { msg.dataset.error = "1"; msg.textContent = text; } },
@@ -146,10 +146,16 @@
                            : "Your browser does not support WebGL 2. Please try an up-to-date Chrome, Safari 15+ or Edge.";
     }
     const script = document.createElement("script");
-    script.src = buildUrl + "/5edc317adf79c250dacaac4659b6a0ff.loader.js";
+    script.src = buildUrl + "/1c19f3630349932e546797e2bfa0ad9b.loader.js";
     script.onload = () => {
       createUnityInstance(canvas, config, p => { fill.style.width = Math.round(p * 90) + "%"; document.querySelector("#pct").textContent = "%" + Math.round(p * 90); })
-        .then((instance) => { window.purristaUnity = instance; clearInterval(quoteTimer); fill.style.width = "100%"; document.querySelector("#pct").textContent = "%100"; setTimeout(() => { loading.style.transition = "opacity .35s"; loading.style.opacity = "0"; setTimeout(() => { loading.style.display = "none"; }, 380); }, 350); })
+        .then((instance) => {
+          window.purristaUnity = instance;
+          // the cloud copy goes up when the tab is hidden or closed (a browser gives no "app paused" otherwise)
+          var hidden = function () { try { instance.SendMessage("PurristaCloud", "OnPageHidden", ""); } catch (e) { } };
+          document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") hidden(); });
+          window.addEventListener("pagehide", hidden);
+          clearInterval(quoteTimer); fill.style.width = "100%"; document.querySelector("#pct").textContent = "%100"; setTimeout(() => { loading.style.transition = "opacity .35s"; loading.style.opacity = "0"; setTimeout(() => { loading.style.display = "none"; }, 380); }, 350); })
         .catch(e => { msg.textContent = String(e); });
     };
     script.onerror = () => { msg.textContent = "Could not load the game files."; };
