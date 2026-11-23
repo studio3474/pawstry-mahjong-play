@@ -119,13 +119,13 @@
     const quoteTimer = setInterval(showQuote, 3500);
     const buildUrl = "Build";
     const config = {
-      dataUrl: buildUrl + "/5e0f5e5d1732ce68f348373d7028ccd9.data.unityweb",
+      dataUrl: buildUrl + "/e2f2fa64bbd6d4921d33be71cda42639.data.unityweb",
       frameworkUrl: buildUrl + "/04c37b7a9e6c1568f899dc4b043df58e.framework.js.unityweb",
-      codeUrl: buildUrl + "/1bacae4d6ad3aed40f22dac2b0ac5a9b.wasm.unityweb",
+      codeUrl: buildUrl + "/f94426f82dace612e199856471138c99.wasm.unityweb",
       streamingAssetsUrl: "StreamingAssets",
       companyName: "STudio3474",
       productName: "Purrista Mahjong",
-      productVersion: "0.29.1",
+      productVersion: "0.29.2",
       // phones report 3x; 2x keeps iOS Safari inside its memory limits
       devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
       showBanner: (text, type) => { if (type === "error") { msg.dataset.error = "1"; msg.textContent = text; } },
@@ -146,7 +146,7 @@
                            : "Your browser does not support WebGL 2. Please try an up-to-date Chrome, Safari 15+ or Edge.";
     }
     const script = document.createElement("script");
-    script.src = buildUrl + "/031c1d1221bab1bb1011a16a276b52f8.loader.js";
+    script.src = buildUrl + "/b07bd22e6d4e44ae5c993e5b4c8b33b9.loader.js";
     script.onload = () => {
       createUnityInstance(canvas, config, p => { fill.style.width = Math.round(p * 90) + "%"; document.querySelector("#pct").textContent = "%" + Math.round(p * 90); })
         .then((instance) => {
